@@ -1,0 +1,187 @@
+### ---------------
+###
+### Create: Jianming Zeng
+### Date: 2018-07-15 17:07:49
+### Email: jmzeng1314@163.com
+### Blog: http://www.bio-info-trainee.com/
+### Forum:  http://www.biotrainee.com/thread-1376-1-1.html
+### CAFS/SUSTC/Eli Lilly/University of Macau
+### Update Log: 2018-07-09  First version
+###
+### ---------------
+
+使用清华的conda，说明书：https://mirrors.tuna.tsinghua.edu.cn/help/anaconda/
+然后下载安装miniconda，位置：https://mirrors.tuna.tsinghua.edu.cn/anaconda/miniconda/ ，更改镜像配置
+下载安装软件之前先搜索是否存在 https://bioconda.github.io/recipes.html
+更改配置：
+conda config --add channels https://mirrors.tuna.tsinghua.edu.cn/anaconda/pkgs/free
+conda config --add channels https://mirrors.tuna.tsinghua.edu.cn/anaconda/cloud/conda-forge
+conda config --add channels https://mirrors.tuna.tsinghua.edu.cn/anaconda/cloud/bioconda
+conda config --set show_channel_urls yes
+然后就可以根据流程来安装一系列软件
+conda  create -n rna  python=2 bwa
+conda info --envs
+source activate rna
+# 可以用search先进行检索
+conda search sratools
+## 保证所有的软件都是安装在rna这个环境下面
+conda install sra-tools
+
+下面这些软件：
+- 质控，需要fastqc 及 multiqc
+  - trimmomatic, cutadapt ,trim-galore
+- 比对
+  - star, hisat2,bowtie2,tophat,bwa,subread
+- 计数
+  - htseq, bedtools ,deeptools salmon 
+ 
+conda  create -n rna  python=2 bwa   
+source activate rna
+conda search trimmomatic
+conda install trimmomatic
+conda install cutadapt multiqc 
+conda install -y trim-galore
+conda install -y star hisat2 bowtie2
+conda install -y subread tophat htseq bedtools deeptools
+conda install -y salmon
+source deactivate  
+
+## step1: sra2fastq 
+# 新建一个txt文档，文件名是SRR_Acc_List.txt ，里面存储着需要下载的srr号码，一个号码占一行。
+wkd=/home/jmzeng/project/airway/
+source activate rna
+cat SRR_Acc_List.txt |while read id ;do (prefetch  ${id} &);done
+ps -ef |grep prefetch|awk '{print $2}'|while read id ;do kill ${id};done
+## 在中国大陆，一般下载速度很慢，所以我杀掉这些下载进程，自己从硬盘拷贝sra文件即可。
+mkdir $wkd/raw 
+cd $wkd/raw 
+ls /public/project/RNA/airway/sra/*  |while read id;do ( nohup fastq-dump --gzip --split-3 -O ./ ${id} & );done
+source deactivate 
+### step2: check quality of sequence reads 
+ls *gz |xargs fastqc -t 10
+multiqc ./ 
+### step3: filter the bad quality reads and remove adaptors. 
+mkdir $wkd/clean 
+cd $wkd/clean 
+ls /home/jmzeng/project/airway/raw/*_1.fastq.gz >1
+ls /home/jmzeng/project/airway/raw/*_2.fastq.gz >2
+paste 1 2  > config
+### 打开文件 qc.sh ，并且写入内容如下： 
+source activate rna
+bin_trim_galore=trim_galore
+dir='/home/jmzeng/project/airway/clean'
+cat $1 |while read id
+do
+        arr=(${id})
+        fq1=${arr[0]}
+        fq2=${arr[1]} 
+nohup $bin_trim_galore -q 25 --phred33 --length 36 -e 0.1 --stringency 3 --paired -o $dir  $fq1 $fq2 & 
+done 
+source deactivate 
+## 然后可以运行这个脚本。
+bash qc.sh  config
+
+## step4: alignment 
+## firstly test 
+mkdir $wkd/test 
+cd $wkd/test 
+source activate rna
+ls $wkd/clean/*gz |while read id;do (zcat ${id}|head -1000>  $(basename ${id} ".gz"));done
+id=SRR1039508
+hisat2 -p 10 -x /public/reference/index/hisat/hg38/genome -1 ${id}_1_val_1.fq   -2 ${id}_2_val_2.fq  -S ${id}.hisat.sam
+subjunc -T 5  -i /public/reference/index/subread/hg38 -r ${id}_1_val_1.fq -R ${id}_2_val_2.fq -o ${id}.subjunc.sam  
+bowtie2 -p 10 -x /public/reference/index/bowtie/hg38  -1 ${id}_1_val_1.fq   -2 ${id}_2_val_2.fq  -S ${id}.bowtie.sam
+bwa mem -t 5 -M  /public/reference/index/bwa/hg38   ${id}_1_val_1.fq   ${id}_2_val_2.fq > ${id}.bwa.sam
+ls *.sam|while read id ;do (samtools sort -O bam -@ 5  -o $(basename ${id} ".sam").bam   ${id});done
+ls *.bam |xargs -i samtools index {}
+source deactivate 
+## then 
+cd $wkd/clean 
+ls *gz|cut -d"_" -f 1 |sort -u |while read id;do
+ls -lh ${id}_1_val_1.fq.gz   ${id}_2_val_2.fq.gz 
+hisat2 -p 10 -x /public/reference/index/hisat/hg38/genome -1 ${id}_1_val_1.fq.gz   -2 ${id}_2_val_2.fq.gz  -S ${id}.hisat.sam
+subjunc -T 5  -i /public/reference/index/subread/hg38 -r ${id}_1_val_1.fq.gz -R ${id}_2_val_2.fq.gz -o ${id}.subjunc.sam
+bowtie2 -p 10 -x /public/reference/index/bowtie/hg38  -1 ${id}_1_val_1.fq.gz   -2 ${id}_2_val_2.fq.gz  -S ${id}.bowtie.sam
+bwa mem -t 5 -M  /public/reference/index/bwa/hg38   ${id}_1_val_1.fq.gz   ${id}_2_val_2.fq.gz > ${id}.bwa.sam
+done 
+ls *.sam|while read id ;do (samtools sort -O bam -@ 5  -o $(basename ${id} ".sam").bam   ${id});done
+rm *.sam 
+ls *.bam |xargs -i samtools index {}
+# ls *.bam |xargs -i samtools flagstat -@ 10  {}  > 
+ls *.bam |while read id ;do ( nohup samtools flagstat -@ 1 $id >  $(basename ${id} ".bam").flagstat  & );done
+
+### Then counts 
+featureCounts -T 5 -p -t exon -g gene_id    \
+-a /public/reference/gtf/gencode/gencode.v25.annotation.gtf.gz -o SRR1039516 \
+l
+htseq-count -f bam -r pos ../clean/SRR1039508.subjunc.bam  /public/reference/gtf/gencode/gencode.v25.annotation.gtf.gz > SRR1039508.count.txt 
+# ENSG00000269896.2       chr1;chr1       2350414;2351644 2352820;2351857 -;-     2407    45 
+samtools view  SRR1039516.subjunc.bam chr1:2350414-2352820|wc
+
+mkdir $wkd/align 
+cd $wkd/align 
+source activate rna
+gtf="/public/reference/gtf/gencode/gencode.v25.annotation.gtf.gz"   
+featureCounts -T 5 -p -t exon -g gene_id  -a $gtf -o  all.id.txt  1>counts.id.log 2>&1 &
+source deactivate 
+
+### 下游分析：
+### 首先探索表达矩阵：
+rm(list = ls())
+options(stringsAsFactors = F)
+a=read.table('all.id.txt',header = T)
+tmp=a[1:14,1:7]
+meta=a[,1:6]
+exprSet=a[,7:ncol(a)]
+colnames(exprSet)
+a2=exprSet[,'SRR1039516.hisat.bam']
+
+
+library(airway)
+data(airway)
+exprSet=assay(airway)
+colnames(exprSet)
+a1=exprSet[,'SRR1039516']
+group_list=colData(airway)[,3]
+
+a2=data.frame(id=meta[,1],a2=a2)
+a1=data.frame(id=names(a1),a1=as.numeric(a1))
+library(stringr)
+a2$id <- str_split(a2$id,'\\.',simplify = T)[,1]
+tmp=merge(a1,a2,by='id')
+png('tmp.png')
+plot(tmp[,2:3])
+dev.off()
+
+
+
+
+library(corrplot)
+png('cor.png')
+corrplot(cor(log2(exprSet+1)))
+dev.off()
+
+library(pheatmap)
+png('heatmap.png')
+m=cor(log2(exprSet+1))
+pheatmap(scale(cor(log2(exprSet+1))))
+dev.off()
+
+## hclust
+colnames(exprSet)=paste(group_list,1:ncol(exprSet),sep='_')
+# Define nodePar
+nodePar <- list(lab.cex = 0.6, pch = c(NA, 19),
+                cex = 0.7, col = "blue")
+hc=hclust(dist(t(log2(exprSet+1))))
+par(mar=c(5,5,5,10))
+png('hclust.png',res=120)
+plot(as.dendrogram(hc), nodePar = nodePar, horiz = TRUE)
+dev.off()
+
+## 然后差异分析：
+# https://github.com/jmzeng1314/my-R/blob/master/10-RNA-seq-3-groups/hisat2_mm10_htseq.R 
+
+
+
+
+
