@@ -41,6 +41,7 @@ if(F){
   data(airway)
   exprSet=assay(airway)
   group_list=colData(airway)[,3]
+  group_list=relevel(group_list,ref = 'trt')
   save(exprSet,group_list,file = 'airway_exprSet.Rdata')
 }
 
