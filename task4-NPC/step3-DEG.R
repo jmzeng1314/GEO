@@ -8,7 +8,7 @@
 ### Forum:  http://www.biotrainee.com/thread-1376-1-1.html
 ### CAFS/SUSTC/Eli Lilly/University of Macau
 ### Update Log: 2018-12-20  First version
-###
+### Update Log: 2019-09-10 基于R version 3.5.1 (2018-07-02)
 ### ---------------
 
 
@@ -79,6 +79,9 @@ head(deg)
 
 save(deg,file = 'deg.Rdata')
 
+load(file = 'deg.Rdata')
+head(deg)
+bp(dat[rownames(deg)[1],])
 ## for volcano 
 if(T){
   nrDEG=deg
