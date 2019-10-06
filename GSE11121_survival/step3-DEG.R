@@ -17,7 +17,9 @@ options(stringsAsFactors = F)
 load(file = 'step1-output.Rdata')
 # 每次都要检测数据
 dat[1:4,1:4] 
+group_list=paste0('grade',group_list)
 table(group_list) #table函数，查看group_list中的分组个数
+group_list=as.factor(group_list)
 #通过为每个数据集绘制箱形图，比较数据集中的数据分布
 boxplot(dat[1,]~group_list) #按照group_list分组画箱线图
 
@@ -44,6 +46,7 @@ fit=eBayes(fit)
 options(digits = 4) #设置全局的数字有效位数为4
 #topTable(fit,coef=2,adjust='BH') 
 topTable(fit,coef=2,adjust='BH') 
+topTable(fit,coef=3,adjust='BH') 
 ## 但是上面的用法做不到随心所欲的指定任意两组进行比较
 
 design <- model.matrix(~0+factor(group_list))
@@ -52,33 +55,26 @@ head(design)
 exprSet=dat
 rownames(design)=colnames(exprSet)
 design
-contrast.matrix<-makeContrasts("Vemurafenib-Control",
+colnames(design)
+contrast.matrix<-makeContrasts(contrasts=c("grade3-grade1",'grade2-grade1'),
                                levels = design)
 contrast.matrix ##这个矩阵声明，我们要把 Tumor 组跟 Normal 进行差异分析比较
 
-deg = function(exprSet,design,contrast.matrix){
-  ##step1
-  fit <- lmFit(exprSet,design)
-  ##step2
-  fit2 <- contrasts.fit(fit, contrast.matrix) 
-  ##这一步很重要，大家可以自行看看效果
-  
-  fit2 <- eBayes(fit2)  ## default no trend !!!
-  ##eBayes() with trend=TRUE
-  ##step3
-  tempOutput = topTable(fit2, coef=1, n=Inf)
-  nrDEG = na.omit(tempOutput) 
-  #write.csv(nrDEG2,"limma_notrend.results.csv",quote = F)
-  head(nrDEG)
-  return(nrDEG)
-}
+##step1
+fit <- lmFit(exprSet,design)
+##step2
+fit2 <- contrasts.fit(fit, contrast.matrix) 
+##这一步很重要，大家可以自行看看效果
 
-deg = deg(exprSet,design,contrast.matrix)
+fit2 <- eBayes(fit2)  ## default no trend !!!
+##eBayes() with trend=TRUE
+##step3
+nrDEG1 = topTable(fit2, coef="grade3-grade1", n=Inf)
+nrDEG2 = topTable(fit2, coef='grade2-grade1', n=Inf)
 
-head(deg)
-
-save(deg,file = 'deg.Rdata')
-
+# 后面的代码，我并没有调试，因为不属于本项目讲解内容
+# 我们关注的应该是生存分析
+ 
 ## for volcano 
 if(T){
   nrDEG=deg
@@ -117,11 +113,10 @@ if(T){
 }
 
 ## for heatmap 
-if(T){ 
-  load(file = 'step1-output.Rdata')
-  # 每次都要检测数据
+if(T){  
   dat[1:4,1:4]
   table(group_list)
+  deg=nrDEG1
   x=deg$logFC #deg取logFC这列并将其重新赋值给x
   names(x)=rownames(deg) #deg取probe_id这列，并将其作为名字给x
   cg=c(names(head(sort(x),100)),#对x进行从小到大排列，取前100及后100，并取其对应的探针名，作为向量赋值给cg

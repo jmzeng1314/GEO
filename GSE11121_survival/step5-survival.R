@@ -80,6 +80,9 @@ phe$H6PD=ifelse(exprSet['H6PD',]>median(exprSet['H6PD',]),'high','low')
 table(phe$H6PD)
 ggsurvplot(survfit(Surv(time, event)~H6PD, data=phe), conf.int=F, pval=TRUE)
 
+# 前面如果我们使用了WGCNA找到了跟grade相关的基因模块，然后在这里就可以跟生存分析的显著性基因做交集
+# 这样就可以得到既能跟grade相关，又有临床预后意义的基因啦。
+
 ## 批量生存分析 使用 coxph 回归方法
 colnames(phe)
 mySurv=with(phe,Surv(time, event))

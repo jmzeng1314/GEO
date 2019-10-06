@@ -40,19 +40,20 @@ dat=exprs(a) #a现在是一个对象，取a这个对象通过看说明书知道�
 dim(dat)#看一下dat这个矩阵的维度
 # GPL6244
 dat[1:4,1:4] #查看dat这个矩阵的1至4行和1至4列，逗号前为行，逗号后为列
-dat=log2(dat+0.1)
+dat=log2(dat+1)
 boxplot(dat,las=2)
 pd=pData(a) #通过查看说明书知道取对象a里的临床信息用pData
 ## 挑选一些感兴趣的临床表型。
 phe=pd[,c(43:46,48)]
 library(stringr)
+head(phe)
 group_list=phe$`grade:ch1`
 table(group_list)
 
 dat[1:4,1:4] 
 
 # GPL96
-
+# 如果这个 GPL96 芯片平台，没有对应的数据R包，就使用下面的代码
 if(F){
   library(GEOquery)
   #Download GPL file, put it in the current directory, and load it:
@@ -67,7 +68,7 @@ if(F){
 # 
 # load(file='probe2gene.Rdata')
 # ids=probe2gene 
-
+# 因为有R包，所以就直接载入R包即可。
 library(hgu133a.db)
 ids=toTable(hgu133aSYMBOL) #toTable这个函数：通过看hgu133plus2.db这个包的说明书知道提取probe_id（探针名）和symbol（基因名）的对应关系的表达矩阵的函数为toTable
 head(ids) #head为查看前六行

@@ -35,7 +35,8 @@ fviz_pca_ind(dat.pca,
              legend.title = "Groups"
 )
 ggsave('all_samples_PCA.png')
-
+# 因为我们的 group_list 分组，指的是 grade，从PCA图可以看到，PC2就是跟grade相关的那些基因。
+# 这里大家可以尝试通过WGCNA把基因分成不同模块，然后看具体哪一个模块跟这个grade特别相关
 
 
 
@@ -51,12 +52,13 @@ n[n>2]=2
 n[n< -2]= -2
 n[1:4,1:4]
 pheatmap(n,show_colnames =F,show_rownames = F)
-ac=data.frame(g=group_list)
+ac=data.frame(group_list=group_list)
 rownames(ac)=colnames(n) #把ac的行名给到n的列名，即对每一个探针标记上分组信息
 
 pheatmap(n,show_colnames =F,show_rownames = F,
          annotation_col=ac,filename = 'heatmap_top1000_sd.png')
-
+# 前面的PCA图看的，只有PC2是跟我们的分组变量grade相关的
+# 所以这个时候的top1000的sd基因，是不可能非常明显的区分不同grade的病人。
 
 
 
