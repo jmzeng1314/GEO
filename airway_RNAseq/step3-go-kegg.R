@@ -18,10 +18,13 @@ gene_down= bitr(unique(deg$down), fromType = "ENSEMBL",
 gene_diff=c(gene_up,gene_down) 
 
 source('kegg_and_go_up_and_down.R')
-run_kegg(gene_up,gene_down,pro='npc_VS_normal')
+# 同样的，里面包装了一些代码，比如setReadable函数
+# 很有可能你使用的时候就发现过期了里面有一些参数
+# 要学会调试代码，不要畏手畏脚。
+run_kegg(gene_up,gene_down,pro='airway_test')
 # 需要多go数据库的3个条目进行3次富集分析，非常耗时。
-run_go(gene_up,gene_down,pro='npc_VS_normal')
-
+run_go(gene_up,gene_down,pro='airway_test')
+# 很多绘图代码，都是依据数据本身特性需要调整的，而且高阶情况下需要AI等等。
 go <- enrichGO(gene_up, OrgDb = "org.Hs.eg.db", ont="all") 
 barplot(go, split="ONTOLOGY")+ facet_grid(ONTOLOGY~., scale="free") 
 ggsave('gene_up_GO_all_barplot.png')
