@@ -56,8 +56,8 @@ if(F){
   #Download GPL file, put it in the current directory, and load it:
   gpl <- getGEO('GPL6244', destdir=".")
   colnames(Table(gpl))  
-  head(Table(gpl)[,c(1,15)]) ## you need to check this , which column do you need
-  probe2gene=Table(gpl)[,c(1,15)]
+  head(Table(gpl)[,c(1,12)]) ## you need to check this , which column do you need
+  probe2gene=Table(gpl)[,c(1,12)]
   head(probe2gene)
   library(stringr)  
   save(probe2gene,file='probe2gene.Rdata')
