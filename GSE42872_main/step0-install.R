@@ -38,7 +38,7 @@ BiocManager::install(c("genefu","org.Hs.eg.db","hgu133plus2.db" ),ask = F,update
 # BiocInstaller::biocLite(c("impute"))
 
 options()$repos
-install.packages('WGCNA')
+BiocManager::install("WGCNA",ask = F,update = F)
 install.packages(c("FactoMineR", "factoextra"))
 install.packages(c("ggplot2", "pheatmap","ggpubr"))
 library("FactoMineR")
